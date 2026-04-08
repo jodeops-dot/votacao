@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Votação Interclasse</title>
+
+<style>
+body {
+    background: linear-gradient(180deg, #0a0a12, #111);
+    color: white;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 10px;
+}
+
+h1 {
+    font-size: 1.6rem;
+    margin: 10px 0;
+}
+
+.contador {
+    background: linear-gradient(45deg, purple, violet);
+    padding: 10px 22px;
+    border-radius: 25px;
+    display: inline-block;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+input[type="text"] {
+    width: 95%;
+    max-width: 320px;
+    padding: 14px;
+    border-radius: 10px;
+    border: 2px solid #333;
+    margin-bottom: 20px;
+    background: #1a1a2e;
+    color: white;
+    font-size: 1rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 10px;
+    max-width: 100%;
+    margin: auto;
+}
+
+@media (min-width: 500px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+    }
+}
+
+@media (min-width: 900px) {
+    .grid {
+        grid-template-columns: repeat(5, 1fr);
+        max-width: 1100px;
+    }
+}
+
+.card {
+    border: 3px solid purple;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    aspect-ratio: 1 / 1;
+    cursor: pointer;
+    transform: scale(1);
+    transition: all 0.25s ease;
+    opacity: 0;
+    animation: aparecer 0.5s forwards;
+    touch-action: manipulation;
+}
+
+@keyframes aparecer {
+    to { opacity: 1; }
+}
+
+.card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card:hover {
+    transform: scale(1.03);
+}
+
+.card:active {
+    transform: scale(0.97);
+}
+
+.card.selecionado {
+    border-color: lime;
+    box-shadow: 0 0 15px lime;
+    transform: scale(1.05);
+}
+
+/* ZOOM */
+#zoom {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+#zoom img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 12px;
+}
+
+/* BOTÃO */
+button {
+    margin-top: 25px;
+    width: 95%;
+    max-width: 320px;
+    padding: 16px;
+    border: none;
+    background: linear-gradient(45deg, lime, #7CFC00);
+    color: black;
+    font-weight: bold;
+    font-size: 1.1rem;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: 30px;
+}
+
+button:hover { transform: scale(1.02); }
+button:active { transform: scale(0.95); }
+</style>
+</head>
+
+<body>
+
+<h1>Votação Interclasse</h1>
+
+<div class="contador">Selecionados: <span id="contador">0</span>/5</div>
+
+<form action="https://formspree.io/f/xwvwzpvq" method="POST" id="form">
+    <input type="text" name="nome" placeholder="Seu nome completo" required>
+    <div class="grid" id="grid"></div>
+    <input type="hidden" name="votos" id="votos">
+    <button type="submit">Enviar Votos</button>
+</form>
+
+<!-- ZOOM -->
+<div id="zoom">
+    <img id="zoomImg">
+</div>
+
+<script>
+const imagens = [
+  "aranha.png","caveira.png","coruja_azul.png",
+  "dragon_branco.png","dragon_branco2.png","dragon_Roxo.png","dragon_verde.png","dragondetalhado.png",
+  "fogoxagua.png","itachi.png","leao.png","lobo_branco.png","lobomal.png","luasolazul.png","minimalista.png","naochorax.png",
+  "ninja.png","onca_verde.png","oncacomun.png","oncaverde.png",
+  "passarofoguinho.png","paterapink.png","pernalonga.png","pernalongaura.png",
+  "pikachu.png","pirata.png","polvo.png","sollluadourado.png","tigre.png","tiopatinhas.png","tom e jerry.png","tomate.png",
+  "triginho.png","tubarao.png","tungtungsahur.png","venom.png"
+];
+
+const grid = document.getElementById("grid");
+const contador = document.getElementById("contador");
+const votosInput = document.getElementById("votos");
+
+const zoom = document.getElementById("zoom");
+const zoomImg = document.getElementById("zoomImg");
+
+if (localStorage.getItem("jaVotou")) {
+    document.body.innerHTML = "<div style='margin-top:100px;'><h1>✅ Voto já registrado!</h1><p>Obrigado por participar.</p></div>";
+}
+
+let selecionados = [];
+let bloqueado = false;
+let lastClick = 0;
+
+imagens.forEach((nome, index) => {
+    const card = document.createElement("div");
+    card.classList.add("card");
+    card.style.animationDelay = (index * 0.02) + "s";
+
+    const img = document.createElement("img");
+    img.src = "imagens_site/" + nome;
+
+    card.appendChild(img);
+
+    card.onclick = () => {
+        const agora = new Date().getTime();
+
+        /* DETECTA DUPLO CLIQUE */
+        if (agora - lastClick < 250) {
+            zoom.style.display = "flex";
+            zoomImg.src = img.src;
+            return;
+        }
+        lastClick = agora;
+
+        if (bloqueado) return;
+        bloqueado = true;
+        setTimeout(() => bloqueado = false, 100);
+
+        if (selecionados.includes(nome)) {
+            selecionados = selecionados.filter(i => i !== nome);
+            card.classList.remove("selecionado");
+        } else {
+            if (selecionados.length < 5) {
+                selecionados.push(nome);
+                card.classList.add("selecionado");
+            } else {
+                alert("Máximo 5 escolhas!");
+            }
+        }
+
+        contador.textContent = selecionados.length;
+        votosInput.value = selecionados.join(", ");
+    };
+
+    grid.appendChild(card);
+});
+
+/* FECHAR ZOOM */
+zoom.onclick = () => {
+    zoom.style.display = "none";
+};
+
+document.getElementById("form").addEventListener("submit", e => {
+    if (selecionados.length === 0) {
+        e.preventDefault();
+        alert("Escolha ao menos 1 opção!");
+    } else {
+        localStorage.setItem("jaVotou", "true");
+    }
+});
+</script>
+
+</body>
+</html>
